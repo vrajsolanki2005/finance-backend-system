@@ -6,21 +6,21 @@ const createTransaction = async (data, userId) => {
 }
 
 const getTransactions = async (userId, role, query = {}) => {
+    const page = Math.max(1, parseInt(query.page) || 1)
+    const limit = Math.min(100, parseInt(query.limit) || 10)
+    const skip = (page - 1) * limit
+
     const filter = { isDeleted: false }
     if (role !== 'ADMIN' && role !== 'ANALYST') filter.userId = userId
     if (query.type) filter.type = query.type
     if (query.category) filter.category = query.category
 
-    const page = Math.max(1, parseInt(query.page) || 1)
-    const limit = Math.min(100, parseInt(query.limit) || 10)
-    const skip = (page - 1) * limit
-
-    const [transactions, total] = await Promise.all([
-        Transaction.find(filter).sort({ date: -1 }).skip(skip).limit(limit),
+    const [data, total] = await Promise.all([
+        Transaction.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
         Transaction.countDocuments(filter),
     ])
 
-    return { transactions, total, page, pages: Math.ceil(total / limit) }
+    return { data, total, page, totalPages: Math.ceil(total / limit) }
 }
 
 const getTransactionById = async (id, userId) => {
