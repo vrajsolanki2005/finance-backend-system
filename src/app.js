@@ -7,7 +7,11 @@ const errorMiddleware = require("./middlewares/error.middleware");
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGIN || 'http://localhost:3000',
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 
 app.use("/auth", authRoutes);
