@@ -2,6 +2,7 @@ const User = require("../models/userModel");
 const { hashedPassword, comparePassword } = require("../utils/hashing");
 const { genToken } = require("../utils/jwt");
 
+//create user
 const registerUser = async (data) => {
     const existing = await User.findOne({ email: data.email });
     if (existing) throw { status: 409, message: "Email already in use" };
@@ -12,6 +13,7 @@ const registerUser = async (data) => {
     return { id: user._id, name: user.name, email: user.email, role: user.role };
 };
 
+//login
 const loginUser = async (data) => {
     const user = await User.findOne({ email: data.email });
     if (!user) throw { status: 401, message: "Invalid email or password" };
