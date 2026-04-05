@@ -21,8 +21,9 @@ const loginUser = async (data) => {
     const isMatch = await comparePassword(data.password, user.password);
     if (!isMatch) throw { status: 401, message: "Invalid email or password" };
 
-    const token = genToken(user);
-    return { token, user: { id: user._id, name: user.name, email: user.email, role: user.role } };
+    const token = genToken(user)
+    const { password: _, ...safeUser } = user.toObject()
+    return { token, user: safeUser }
 };
 
 module.exports = { registerUser, loginUser };

@@ -28,11 +28,16 @@ const getTransactionById = async (id, userId) => {
 }
 
 const updateTransaction = async (id, data) => {
-    return await Transaction.findOneAndUpdate(
+    if (data.amount !== undefined && data.amount <= 0)
+        throw { status: 400, message: 'Invalid amount' }
+
+    const transaction = await Transaction.findOneAndUpdate(
         { transactionId: id, isDeleted: false },
         data,
         { new: true }
     )
+    if (!transaction) throw { status: 404, message: 'Transaction not found' }
+    return transaction
 }
 
 const deleteTransaction = async (id) => {
