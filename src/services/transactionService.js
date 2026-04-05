@@ -23,8 +23,10 @@ const getTransactions = async (userId, role, query = {}) => {
     return { data, total, page, totalPages: Math.ceil(total / limit) }
 }
 
-const getTransactionById = async (id, userId) => {
-    return await Transaction.findOne({ transactionId: id, userId, isDeleted: false })
+const getTransactionById = async (id, userId, role) => {
+    const filter = { transactionId: id, isDeleted: false }
+    if (role !== 'ADMIN') filter.userId = userId
+    return await Transaction.findOne(filter)
 }
 
 const updateTransaction = async (id, data) => {
