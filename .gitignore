@@ -1,9 +1,30 @@
-## Dependencies
-node_modules
+# Dependencies
+node_modules/
 
-
-##.md
-structure.md
-
-#env files
+# Environment variables
 .env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build
+dist/
+build/
+
+# Test coverage
+coverage/
+
+# Misc
+structure.md
