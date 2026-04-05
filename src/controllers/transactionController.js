@@ -21,7 +21,7 @@ const getAll = async (req, res, next) => {
 
 const getOne = async (req, res, next) => {
     try {
-        const data = await service.getTransactionById(+req.params.id, req.user.id)
+        const data = await service.getTransactionById(+req.params.id, req.user.id, req.user.role)
         if (!data) return sendResponse(res, 404, 'Transaction not found')
         sendResponse(res, 200, 'Transaction fetched', data)
     } catch (err) {

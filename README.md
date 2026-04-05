@@ -5,100 +5,187 @@ A backend system for managing financial transactions with role-based access cont
 Inspired by real-world fintech architecture.
 
 ---
+
 ## Tech Stack
+
 - Node.js
-- Express.js
+- Express.js v5
 - MongoDB (Mongoose)
-- JWT Authentication
-- Express Validator
+- JWT Authentication (Access + Refresh Token via cookies)
+- bcryptjs
+- express-validator
+- express-rate-limit
+- cors, cookie-parser, dotenv
 
 ## Features
-- JWT-based Authentication
-- Role-Based Access Control (Admin, Analyst, Viewer)
-- Transaction Management (CRUD with soft delete)
+
+- JWT-based Authentication with refresh token stored in HTTP-only cookie
+- Role-Based Access Control (ADMIN, ANALYST, VIEWER)
+- Transaction Management (Create, Read, Update, Soft Delete)
+- Auto-incrementing `transactionId` per transaction
 - Advanced Filtering (date, category, type)
 - Dashboard Analytics (income, expense, trends)
 - Pagination support
-- Rate limiting for API protection
+- Rate limiting on auth routes (20 req / 15 min)
+- Centralized error handling middleware
+- Input validation via express-validator
 
 ## Architecture
-The project follows a modular architecture with separation of concerns:
 
+```
 Route → Controller → Service → Model
+```
 
-This ensures scalability, maintainability, and clean code structure.
+```
+src/
+├── config/         # DB connection
+├── controllers/    # Request handlers
+├── middlewares/    # auth, rbac, validate, error
+├── models/         # Mongoose schemas
+├── routes/         # Express routers
+├── services/       # Business logic
+├── utils/          # jwt, hashing, response helpers
+├── validators/     # express-validator rule sets
+├── app.js
+└── server.js
+test/               # Jest + Supertest test suites
+```
 
 ## Role System
-| Role    | Permissions      |
-| ------- | ---------------- |
-| Admin   | Full access      |
-| Analyst | Read + Dashboard |
-| Viewer  | Limited access   |
 
-# 🚀 API Documentation
-
-## 🌐 Base URL
-All requests should be sent to:
+| Role    | Permissions                        |
+|---------|------------------------------------|
+| ADMIN   | Full access (CRUD + Dashboard)     |
+| ANALYST | Read transactions + Dashboard      |
+| VIEWER  | Read transactions only             |
 
 ---
 
-## 🔐 Authentication
+## 🚀 API Documentation
 
-| Method | Endpoint              | Description                         | Auth Required |
-|--------|---------------------|-------------------------------------|--------------|
-| POST   | /api/auth/register  | Register a new user account         | No           |
-| POST   | /api/auth/login     | Authenticate & get access token     | No           |
+### Base URL
 
----
-
-## 💸 Transactions
-
-| Method | Endpoint             | Description                         | Auth Required |
-|--------|----------------------|-------------------------------------|--------------|
-| GET    | /api/transactions    | Fetch all user transactions         | Yes          |
-| POST   | /api/transactions    | Create a new transaction            | Yes          |
+```
+http://localhost:5000
+```
 
 ---
 
-## 📊 Dashboard & Analytics
+### 🔐 Authentication
 
-| Method | Endpoint                    | Description                              | Auth Required |
-|--------|-----------------------------|------------------------------------------|--------------|
-| GET    | /api/dashboard/summary      | Get balance, income & expense totals     | Yes          |
-| GET    | /api/dashboard/trends       | Get time-series data for charts          | Yes          |
+| Method | Endpoint             | Description                        | Auth Required |
+|--------|----------------------|------------------------------------|---------------|
+| POST   | /api/auth/register   | Register a new user account        | No            |
+| POST   | /api/auth/login      | Authenticate & get access token    | No            |
+| POST   | /api/auth/logout     | Invalidate session / clear cookie  | Yes           |
 
 ---
 
-## 📝 Request Example
+### 💸 Transactions
+
+| Method | Endpoint                | Description                        | Roles Allowed              |
+|--------|-------------------------|------------------------------------|----------------------------|
+| GET    | /api/transactions       | Fetch all transactions             | ADMIN, ANALYST, VIEWER     |
+| GET    | /api/transactions/:id   | Fetch a single transaction         | ADMIN, ANALYST, VIEWER     |
+| POST   | /api/transactions       | Create a new transaction           | ADMIN                      |
+| PATCH  | /api/transactions/:id   | Update a transaction               | ADMIN                      |
+| DELETE | /api/transactions/:id   | Soft delete a transaction          | ADMIN                      |
+
+---
+
+### 📊 Dashboard & Analytics
+
+| Method | Endpoint                 | Description                            | Roles Allowed     |
+|--------|--------------------------|----------------------------------------|-------------------|
+| GET    | /api/dashboard/summary   | Get balance, income & expense totals   | ADMIN, ANALYST    |
+| GET    | /api/dashboard/trends    | Get time-series data for charts        | ADMIN, ANALYST    |
+
+---
+
+## 📝 Request Examples
+
+### Register
+
+```json
+POST /api/auth/register
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "securepassword"
+}
+```
+
+### Login
+
+```json
+POST /api/auth/login
+{
+  "email": "john@example.com",
+  "password": "securepassword"
+}
+```
 
 ### Create Transaction
 
 ```json
+POST /api/transactions
+Authorization: Bearer <your_token_here>
+
 {
   "amount": 45.00,
+  "type": "expense",
   "category": "Food",
-  "description": "Lunch at the bistro",
   "date": "2026-04-05"
 }
 ```
 
-Authorization: Bearer <your_token_here>
+---
 
 ## Setup Instructions
 
-cd project
+```bash
+git clone https://github.com/vrajsolanki2005/finance-backend-system.git
+cd finance-backend-system
 npm install
+```
 
-Create .env file:
+Create a `.env` file:
 
+```env
 PORT=5000
 MONGO_URI=your_mongo_url
 JWT_SECRET=your_secret
+JWT_REFRESH_SECRET=your_refresh_secret
+ALLOWED_ORIGIN=http://localhost:3000
+```
 
-npm run dev
+```bash
+npm run dev      # development with nodemon
+npm start        # production
+npm test         # run Jest test suites
+```
+
+---
+
+## Testing
+
+Tests are located in the `test/` directory and use **Jest** + **Supertest**.
+
+```
+test/
+├── auth.test.js
+├── transaction.test.js
+└── dashboard.test.js
+```
+
+---
 
 ## Assumptions
-- Soft delete is used instead of permanent deletion
-- Only Admin can modify transactions
-- Analysts can only view analytics
-- All endpoints are secured using JWT
+
+- Soft delete is used instead of permanent deletion (`isDeleted` flag)
+- Only ADMIN can create, update, or delete transactions
+- ANALYST can read transactions and access dashboard analytics
+- VIEWER has read-only access to transactions
+- JWT access token is sent via `Authorization: Bearer` header
+- Refresh token is stored in an HTTP-only cookie
+- CORS is restricted to `ALLOWED_ORIGIN` (default: `http://localhost:3000`)
