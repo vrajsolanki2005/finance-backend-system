@@ -5,7 +5,7 @@ const controller = require('../controllers/dashboardController')
 const auth = require('../middlewares/auth.middleware')
 const role = require('../middlewares/rbac.middleware')
 
-router.get('/summary',auth,role(['admin','user']),controller.summary)
-router.get('/trends', auth, role(['admin', 'user']), controller.trends)
+router.get('/summary', auth, role('ADMIN', 'ANALYST'), controller.summary)
+router.get('/trends', auth, role('ADMIN', 'ANALYST'), controller.trends)
 
 module.exports = router;
