@@ -6,15 +6,8 @@ const TEST_EMAIL = 'auth_test@test.com'
 const VALID_USER = { name: 'Test User', email: TEST_EMAIL, password: '123456' }
 
 describe('Auth API', () => {
-    let token = ''
-
-    beforeAll(async () => {
-        await User.deleteOne({ email: TEST_EMAIL })
-    })
-
-    afterAll(async () => {
-        await User.deleteOne({ email: TEST_EMAIL })
-    })
+    beforeAll(async () => { await User.deleteOne({ email: TEST_EMAIL }) })
+    afterAll(async () => { await User.deleteOne({ email: TEST_EMAIL }) })
 
     describe('POST /api/auth/register', () => {
         test('201 — registers a new user', async () => {
@@ -66,12 +59,21 @@ describe('Auth API', () => {
     })
 
     describe('POST /api/auth/login', () => {
-        test('200 — returns token on valid credentials', async () => {
+        test('200 — sets HttpOnly accessToken and refreshToken cookies', async () => {
             const res = await request(app).post('/api/auth/login').send({ email: TEST_EMAIL, password: '123456' })
-            token = res.body.data.token
             expect(res.status).toBe(200)
-            expect(res.body.data).toHaveProperty('token')
-            expect(typeof token).toBe('string')
+            const cookies = res.headers['set-cookie']
+            expect(cookies).toBeDefined()
+            const cookieStr = cookies.join('; ')
+            expect(cookieStr).toMatch(/accessToken=/)
+            expect(cookieStr).toMatch(/refreshToken=/)
+            expect(cookieStr).toMatch(/HttpOnly/i)
+        })
+
+        test('200 — token is not exposed in response body', async () => {
+            const res = await request(app).post('/api/auth/login').send({ email: TEST_EMAIL, password: '123456' })
+            expect(res.status).toBe(200)
+            expect(res.body.data).toBeUndefined()
         })
 
         test('401 — rejects wrong password', async () => {
@@ -87,6 +89,23 @@ describe('Auth API', () => {
         test('400 — rejects missing password', async () => {
             const res = await request(app).post('/api/auth/login').send({ email: TEST_EMAIL })
             expect(res.status).toBe(400)
+        })
+    })
+
+    describe('POST /api/auth/logout', () => {
+        test('200 — clears cookies on logout', async () => {
+            const loginRes = await request(app).post('/api/auth/login').send({ email: TEST_EMAIL, password: '123456' })
+            const cookie = loginRes.headers['set-cookie']
+
+            const res = await request(app).post('/api/auth/logout').set('Cookie', cookie)
+            expect(res.status).toBe(200)
+            const cleared = res.headers['set-cookie']?.join('; ') ?? ''
+            expect(cleared).toMatch(/accessToken=;/)
+        })
+
+        test('401 — logout without cookie is rejected', async () => {
+            const res = await request(app).post('/api/auth/logout')
+            expect(res.status).toBe(401)
         })
     })
 })

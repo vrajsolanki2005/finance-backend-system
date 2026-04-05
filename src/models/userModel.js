@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { type: String, enum: ['VIEWER', 'ANALYST', 'ADMIN'], default: 'VIEWER' },
     status: { type: Boolean, default: true },
+    refreshToken: { type: String, default: null },
 }, { timestamps: true })
 
 module.exports = mongoose.model('User', userSchema)

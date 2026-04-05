@@ -1,6 +1,6 @@
 const User = require('../models/userModel')
 const { hashedPassword, comparePassword } = require('../utils/hashing')
-const { genToken } = require('../utils/jwt')
+const { genToken, genRefreshToken } = require('../utils/jwt')
 
 const registerUser = async (data) => {
     const existing = await User.findOne({ email: data.email })
@@ -19,9 +19,16 @@ const loginUser = async (data) => {
     const isMatch = await comparePassword(data.password, user.password)
     if (!isMatch) throw { status: 401, message: 'Invalid email or password' }
 
-    const token = genToken(user)
-    const { password: _, ...safeUser } = user.toObject()
-    return { token, user: safeUser }
+    const accessToken = genToken(user)
+    const refreshToken = genRefreshToken(user)
+
+    await User.findByIdAndUpdate(user._id, { refreshToken })
+
+    return { accessToken, refreshToken }
 }
 
-module.exports = { registerUser, loginUser }
+const logoutUser = async (userId) => {
+    await User.findByIdAndUpdate(userId, { refreshToken: null })
+}
+
+module.exports = { registerUser, loginUser, logoutUser }
