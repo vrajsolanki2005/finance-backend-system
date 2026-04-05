@@ -179,6 +179,8 @@ test/
 ```
 
 ---
+## Docs
+Visit http://localhost:3000/api-docs after starting the server to explore the full interactive documentation.
 
 ## Assumptions
 
