@@ -49,13 +49,4 @@ const remove = async (req, res, next) => {
     }
 }
 
-const dashboard = async (req, res, next) => {
-    try {
-        const data = await service.getDashboard(req.user.id)
-        sendResponse(res, 200, 'Dashboard fetched', data)
-    } catch (err) {
-        next(err)
-    }
-}
-
-module.exports = { create, getAll, getOne, update, remove, dashboard }
+module.exports = { create, getAll, getOne, update, remove }
