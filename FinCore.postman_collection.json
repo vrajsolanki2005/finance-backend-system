@@ -33,9 +33,11 @@
               "script": {
                 "exec": [
                   "pm.test('Status is 201', () => pm.response.to.have.status(201));",
-                  "pm.test('Returns user object', () => {",
+                  "pm.test('Returns user object with email and role', () => {",
                   "    const json = pm.response.json();",
                   "    pm.expect(json).to.have.property('data');",
+                  "    pm.expect(json.data).to.have.property('email');",
+                  "    pm.expect(json.data).to.have.property('role');",
                   "});"
                 ]
               }
@@ -66,10 +68,10 @@
               "script": {
                 "exec": [
                   "pm.test('Login success', () => pm.response.to.have.status(200));",
-                  "pm.test('Token returned', () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data).to.have.property('token');",
-                  "    pm.environment.set('token', json.data.token);",
+                  "pm.test('Sets HttpOnly cookies', () => {",
+                  "    const cookies = pm.response.headers.get('Set-Cookie') || '';",
+                  "    pm.expect(cookies).to.include('accessToken');",
+                  "    pm.expect(cookies).to.include('refreshToken');",
                   "});"
                 ]
               }
@@ -80,7 +82,7 @@
           "name": "Logout",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [],
             "url": {
               "raw": "http://localhost:5000/api/auth/logout",
               "protocol": "http",
@@ -95,7 +97,10 @@
               "script": {
                 "exec": [
                   "pm.test('Logout success', () => pm.response.to.have.status(200));",
-                  "pm.environment.unset('token');"
+                  "pm.test('Clears accessToken cookie', () => {",
+                  "    const cookies = pm.response.headers.get('Set-Cookie') || '';",
+                  "    pm.expect(cookies).to.include('accessToken=;');",
+                  "});"
                 ]
               }
             }
@@ -116,7 +121,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"amount\": 1000,\n  \"type\": \"income\",\n  \"category\": \"salary\",\n  \"description\": \"Monthly salary\",\n  \"date\": \"2026-04-05\"\n}",
+              "raw": "{\n  \"amount\": 1000,\n  \"type\": \"income\",\n  \"category\": \"salary\",\n  \"date\": \"2026-04-05\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -133,10 +138,10 @@
               "script": {
                 "exec": [
                   "pm.test('Transaction created', () => pm.response.to.have.status(201));",
-                  "pm.test('Saves transaction ID', () => {",
+                  "pm.test('Saves transactionId to env', () => {",
                   "    const json = pm.response.json();",
-                  "    pm.expect(json.data).to.have.property('_id');",
-                  "    pm.environment.set('transactionId', json.data._id);",
+                  "    pm.expect(json.data).to.have.property('transactionId');",
+                  "    pm.environment.set('transactionId', json.data.transactionId);",
                   "});"
                 ]
               }
@@ -149,11 +154,15 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "http://localhost:5000/api/transactions",
+              "raw": "http://localhost:5000/api/transactions?page=1&limit=10",
               "protocol": "http",
               "host": ["localhost"],
               "port": "5000",
-              "path": ["api", "transactions"]
+              "path": ["api", "transactions"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
             }
           },
           "event": [
@@ -162,9 +171,48 @@
               "script": {
                 "exec": [
                   "pm.test('Fetched transactions', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns array', () => {",
+                  "pm.test('Returns paginated shape', () => {",
                   "    const json = pm.response.json();",
-                  "    pm.expect(json.data).to.be.an('array');",
+                  "    pm.expect(json.data).to.have.property('data');",
+                  "    pm.expect(json.data).to.have.property('total');",
+                  "    pm.expect(json.data).to.have.property('page');",
+                  "    pm.expect(json.data).to.have.property('totalPages');",
+                  "    pm.expect(json.data.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get All Transactions (filtered)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "http://localhost:5000/api/transactions?type=income&category=salary",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "transactions"],
+              "query": [
+                { "key": "type", "value": "income" },
+                { "key": "category", "value": "salary" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Filtered transactions OK', () => pm.response.to.have.status(200));",
+                  "pm.test('All results match filter', () => {",
+                  "    const json = pm.response.json();",
+                  "    json.data.data.forEach(t => {",
+                  "        pm.expect(t.type).to.eql('income');",
+                  "        pm.expect(t.category).to.eql('salary');",
+                  "    });",
                   "});"
                 ]
               }
@@ -190,9 +238,9 @@
               "script": {
                 "exec": [
                   "pm.test('Fetched single transaction', () => pm.response.to.have.status(200));",
-                  "pm.test('Correct ID returned', () => {",
+                  "pm.test('Correct transactionId returned', () => {",
                   "    const json = pm.response.json();",
-                  "    pm.expect(json.data._id).to.eql(pm.environment.get('transactionId'));",
+                  "    pm.expect(json.data.transactionId).to.eql(pm.environment.get('transactionId'));",
                   "});"
                 ]
               }
@@ -209,7 +257,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"amount\": 1500,\n  \"description\": \"Updated salary\"\n}",
+              "raw": "{\n  \"amount\": 1500\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -226,7 +274,7 @@
               "script": {
                 "exec": [
                   "pm.test('Transaction updated', () => pm.response.to.have.status(200));",
-                  "pm.test('Amount updated', () => {",
+                  "pm.test('Amount reflects update', () => {",
                   "    const json = pm.response.json();",
                   "    pm.expect(json.data.amount).to.eql(1500);",
                   "});"
@@ -253,8 +301,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Transaction deleted', () => pm.response.to.have.status(200));",
-                  "pm.environment.unset('transactionId');"
+                  "pm.test('Transaction deleted', () => pm.response.to.have.status(200));"
                 ]
               }
             }
@@ -284,9 +331,13 @@
               "script": {
                 "exec": [
                   "pm.test('Dashboard summary OK', () => pm.response.to.have.status(200));",
-                  "pm.test('Has balance fields', () => {",
+                  "pm.test('Has correct balance fields', () => {",
                   "    const json = pm.response.json();",
-                  "    pm.expect(json.data).to.include.keys('totalIncome', 'totalExpense', 'balance');",
+                  "    pm.expect(json.data).to.include.keys('totalIncome', 'totalExpense', 'netBalance');",
+                  "});",
+                  "pm.test('netBalance equals totalIncome minus totalExpense', () => {",
+                  "    const { totalIncome, totalExpense, netBalance } = pm.response.json().data;",
+                  "    pm.expect(netBalance).to.eql(totalIncome - totalExpense);",
                   "});"
                 ]
               }
@@ -316,6 +367,196 @@
                   "    const json = pm.response.json();",
                   "    pm.expect(json.data).to.be.an('array');",
                   "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Audit Logs",
+      "item": [
+        {
+          "name": "Get All Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "http://localhost:5000/api/audit?page=1&limit=20",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "audit"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Audit logs fetched', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns paginated shape', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.have.property('total');",
+                  "    pm.expect(json.data).to.have.property('page');",
+                  "    pm.expect(json.data).to.have.property('limit');",
+                  "    pm.expect(json.data.logs).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Audit Logs (filter by action)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "http://localhost:5000/api/audit?action=CREATE_TRANSACTION",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "audit"],
+              "query": [
+                { "key": "action", "value": "CREATE_TRANSACTION" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Filtered audit logs OK', () => pm.response.to.have.status(200));",
+                  "pm.test('All logs match action filter', () => {",
+                  "    const json = pm.response.json();",
+                  "    json.data.logs.forEach(log => {",
+                  "        pm.expect(log.action).to.eql('CREATE_TRANSACTION');",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Audit Logs (filter by resource)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "http://localhost:5000/api/audit?resource=transaction",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "audit"],
+              "query": [
+                { "key": "resource", "value": "transaction" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Resource-filtered audit logs OK', () => pm.response.to.have.status(200));",
+                  "pm.test('All logs match resource filter', () => {",
+                  "    const json = pm.response.json();",
+                  "    json.data.logs.forEach(log => {",
+                  "        pm.expect(log.resource).to.eql('transaction');",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Transaction Audit History",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "http://localhost:5000/api/audit/transactions/{{transactionId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "audit", "transactions", "{{transactionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Transaction audit history fetched', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns an array of audit entries', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "});",
+                  "pm.test('Each entry has action, details, and createdAt', () => {",
+                  "    const json = pm.response.json();",
+                  "    json.data.forEach(entry => {",
+                  "        pm.expect(entry).to.have.property('action');",
+                  "        pm.expect(entry).to.have.property('details');",
+                  "        pm.expect(entry).to.have.property('createdAt');",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Audit Logs – 403 (non-ADMIN)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{analystToken}}" }],
+            "url": {
+              "raw": "http://localhost:5000/api/audit",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "audit"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Non-ADMIN is denied', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Audit Logs – 401 (unauthenticated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/audit",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "audit"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Unauthenticated request rejected', () => pm.response.to.have.status(401));"
                 ]
               }
             }
