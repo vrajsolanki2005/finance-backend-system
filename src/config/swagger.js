@@ -29,6 +29,19 @@ const options = {
                         isDeleted: { type: 'boolean', example: false },
                     },
                 },
+                AuditLog: {
+                    type: 'object',
+                    properties: {
+                        _id: { type: 'string', example: '664a1f...' },
+                        action: { type: 'string', example: 'CREATE_TRANSACTION' },
+                        userId: { type: 'object', properties: { name: { type: 'string' }, email: { type: 'string' }, role: { type: 'string' } } },
+                        resource: { type: 'string', example: 'transaction' },
+                        details: { type: 'object' },
+                        ip: { type: 'string', example: '127.0.0.1' },
+                        userAgent: { type: 'string' },
+                        createdAt: { type: 'string', format: 'date-time' },
+                    },
+                },
                 Error: {
                     type: 'object',
                     properties: {
