@@ -1,4 +1,5 @@
 const authService = require('../services/authService')
+const { logAction } = require('../services/auditService')
 const sendResponse = require('../utils/response')
 
 const COOKIE_OPTS = { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production' }
@@ -6,6 +7,7 @@ const COOKIE_OPTS = { httpOnly: true, sameSite: 'strict', secure: process.env.NO
 const register = async (req, res, next) => {
     try {
         const data = await authService.registerUser(req.body)
+        await logAction('REGISTER', data.id, { email: data.email, role: data.role }, req, 'auth')
         sendResponse(res, 201, 'User registered', data)
     } catch (err) {
         next(err)
@@ -14,9 +16,10 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
     try {
-        const { accessToken, refreshToken } = await authService.loginUser(req.body)
+        const { accessToken, refreshToken, user } = await authService.loginUser(req.body)
         res.cookie('accessToken', accessToken, { ...COOKIE_OPTS, maxAge: 15 * 60 * 1000 })
         res.cookie('refreshToken', refreshToken, { ...COOKIE_OPTS, maxAge: 30 * 24 * 60 * 60 * 1000 })
+        await logAction('LOGIN', user.id, { email: user.email, role: user.role }, req, 'auth')
         sendResponse(res, 200, 'Login successful')
     } catch (err) {
         next(err)
@@ -28,6 +31,7 @@ const logout = async (req, res, next) => {
         await authService.logoutUser(req.user.id)
         res.clearCookie('accessToken', COOKIE_OPTS)
         res.clearCookie('refreshToken', COOKIE_OPTS)
+        await logAction('LOGOUT', req.user.id, {}, req, 'auth')
         sendResponse(res, 200, 'Logged out')
     } catch (err) {
         next(err)
