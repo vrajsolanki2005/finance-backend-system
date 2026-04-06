@@ -11,25 +11,30 @@ Inspired by real-world fintech architecture.
 - Node.js
 - Express.js v5
 - MongoDB (Mongoose)
-- JWT Authentication (Access + Refresh Token via cookies)
+- JWT Authentication (Access + Refresh Token via HTTP-only cookies)
 - bcryptjs
 - express-validator
 - express-rate-limit
 - cors, cookie-parser, dotenv
 
+---
+
 ## Features
 
-- JWT-based Authentication with refresh token stored in HTTP-only cookie
-- Role-Based Access Control (ADMIN, ANALYST, VIEWER)
-- Transaction Management (Create, Read, Update, Soft Delete)
+- JWT-based authentication with access + refresh tokens stored in HTTP-only cookies
+- Role-based access control (ADMIN, ANALYST, VIEWER)
+- Transaction management (Create, Read, Update, Soft Delete)
 - Auto-incrementing `transactionId` per transaction
-- Advanced Filtering (date, category, type)
-- Dashboard Analytics (income, expense, trends)
-- Audit Logging (every auth, transaction, and dashboard action is recorded with IP, user agent, and full details)
-- Pagination support
+- Advanced filtering by type, category, and date with pagination
+- Dashboard analytics (income, expense, net balance, trends)
+- Audit logging — every auth, transaction, and dashboard action is recorded with IP, user agent, and full details
+- Before/after snapshots on UPDATE, full snapshot on DELETE
 - Rate limiting on auth routes (20 req / 15 min)
 - Centralized error handling middleware
 - Input validation via express-validator
+- Interactive API docs via Swagger UI
+
+---
 
 ## Architecture
 
@@ -39,7 +44,7 @@ Route → Controller → Service → Model
 
 ```
 src/
-├── config/         # DB connection
+├── config/         # DB connection, Swagger config
 ├── controllers/    # Request handlers
 ├── middlewares/    # auth, rbac, validate, error
 ├── models/         # Mongoose schemas
@@ -52,17 +57,19 @@ src/
 test/               # Jest + Supertest test suites
 ```
 
+---
+
 ## Role System
 
-| Role    | Permissions                        |
-|---------|------------------------------------|
-| ADMIN   | Full access (CRUD + Dashboard)     |
-| ANALYST | Read transactions + Dashboard      |
-| VIEWER  | Read transactions only             |
+| Role    | Permissions                                    |
+|---------|------------------------------------------------|
+| ADMIN   | Full access (CRUD + Dashboard + Audit Logs)    |
+| ANALYST | Read transactions + Dashboard                  |
+| VIEWER  | Read transactions only                         |
 
 ---
 
-## 🚀 API Documentation
+## API Documentation
 
 ### Base URL
 
@@ -70,49 +77,85 @@ test/               # Jest + Supertest test suites
 http://localhost:5000
 ```
 
----
-
-### 🔐 Authentication
-
-| Method | Endpoint             | Description                        | Auth Required |
-|--------|----------------------|------------------------------------|---------------|
-| POST   | /api/auth/register   | Register a new user account        | No            |
-| POST   | /api/auth/login      | Authenticate & get access token    | No            |
-| POST   | /api/auth/logout     | Invalidate session / clear cookie  | Yes           |
+> Interactive Swagger docs: `http://localhost:5000/api-docs`
 
 ---
 
-### 💸 Transactions
+### Authentication
 
-| Method | Endpoint                | Description                        | Roles Allowed              |
-|--------|-------------------------|------------------------------------|----------------------------|
-| GET    | /api/transactions       | Fetch all transactions             | ADMIN, ANALYST, VIEWER     |
-| GET    | /api/transactions/:id   | Fetch a single transaction         | ADMIN, ANALYST, VIEWER     |
-| POST   | /api/transactions       | Create a new transaction           | ADMIN                      |
-| PATCH  | /api/transactions/:id   | Update a transaction               | ADMIN                      |
-| DELETE | /api/transactions/:id   | Soft delete a transaction          | ADMIN                      |
+| Method | Endpoint           | Description                       | Auth Required |
+|--------|--------------------|-----------------------------------|---------------|
+| POST   | /api/auth/register | Register a new user account       | No            |
+| POST   | /api/auth/login    | Authenticate & set token cookies  | No            |
+| POST   | /api/auth/logout   | Clear session cookies             | Yes           |
 
 ---
 
-### 📋 Audit Logs
+### Transactions
 
-| Method | Endpoint                        | Description                              | Roles Allowed |
-|--------|---------------------------------|------------------------------------------|---------------|
-| GET    | /api/audit                      | Fetch all audit logs (filterable)        | ADMIN         |
-| GET    | /api/audit/transactions/:id     | Full audit history for a transaction     | ADMIN         |
+| Method | Endpoint              | Description               | Roles Allowed      |
+|--------|-----------------------|---------------------------|--------------------|
+| GET    | /api/transactions     | Fetch all transactions    | ADMIN, ANALYST     |
+| GET    | /api/transactions/:id | Fetch a single transaction| ADMIN, ANALYST     |
+| POST   | /api/transactions     | Create a new transaction  | ADMIN              |
+| PATCH  | /api/transactions/:id | Update a transaction      | ADMIN              |
+| DELETE | /api/transactions/:id | Soft delete a transaction | ADMIN              |
+
+#### Query Parameters — `GET /api/transactions`
+
+| Param      | Type    | Description                        |
+|------------|---------|------------------------------------|
+| `type`     | string  | Filter by `income` or `expense`    |
+| `category` | string  | Filter by category name            |
+| `page`     | integer | Page number (default: 1)           |
+| `limit`    | integer | Results per page (default: 10, max: 100) |
 
 ---
 
-### 📊 Dashboard & Analytics
+### Audit Logs
 
-| Method | Endpoint                 | Description                            | Roles Allowed     |
-|--------|--------------------------|----------------------------------------|-------------------|
-| GET    | /api/dashboard/summary   | Get balance, income & expense totals   | ADMIN, ANALYST    |
-| GET    | /api/dashboard/trends    | Get time-series data for charts        | ADMIN, ANALYST    |
+| Method | Endpoint                    | Description                           | Roles Allowed |
+|--------|-----------------------------|---------------------------------------|---------------|
+| GET    | /api/audit                  | Fetch all audit logs (filterable)     | ADMIN         |
+| GET    | /api/audit/transactions/:id | Full audit history for a transaction  | ADMIN         |
+
+#### Query Parameters — `GET /api/audit`
+
+| Param      | Type    | Description                                                      |
+|------------|---------|------------------------------------------------------------------|
+| `userId`   | string  | Filter by user ObjectId                                          |
+| `action`   | string  | Filter by action (e.g. `LOGIN`, `CREATE_TRANSACTION`)            |
+| `resource` | string  | Filter by resource type (`auth`, `transaction`, `dashboard`)     |
+| `page`     | integer | Page number (default: 1)                                         |
+| `limit`    | integer | Results per page (default: 20)                                   |
+
+#### Audit Actions Reference
+
+| Action                  | Resource    | Details logged                                      |
+|-------------------------|-------------|-----------------------------------------------------|
+| `REGISTER`              | auth        | email, role                                         |
+| `LOGIN`                 | auth        | email, role                                         |
+| `LOGOUT`                | auth        | —                                                   |
+| `CREATE_TRANSACTION`    | transaction | transactionId, amount, type, category, date         |
+| `UPDATE_TRANSACTION`    | transaction | transactionId, before snapshot, after snapshot      |
+| `DELETE_TRANSACTION`    | transaction | transactionId, full snapshot at time of deletion    |
+| `GET_ALL_TRANSACTIONS`  | transaction | filters applied                                     |
+| `GET_TRANSACTION`       | transaction | transactionId                                       |
+| `VIEW_DASHBOARD_SUMMARY`| dashboard   | —                                                   |
+| `VIEW_DASHBOARD_TRENDS` | dashboard   | —                                                   |
 
 ---
 
-## 📝 Request Examples
+### Dashboard & Analytics
+
+| Method | Endpoint               | Description                          | Roles Allowed  |
+|--------|------------------------|--------------------------------------|----------------|
+| GET    | /api/dashboard/summary | Get net balance, income & expense    | ADMIN, ANALYST |
+| GET    | /api/dashboard/trends  | Get monthly time-series data         | ADMIN, ANALYST |
+
+---
+
+## Request Examples
 
 ### Register
 
@@ -135,11 +178,13 @@ POST /api/auth/login
 }
 ```
 
+> Access and refresh tokens are set as HTTP-only cookies. No token is returned in the response body.
+
 ### Create Transaction
 
 ```json
 POST /api/transactions
-Authorization: Bearer <your_token_here>
+Authorization: Bearer <access_token>
 
 {
   "amount": 45.00,
@@ -149,20 +194,37 @@ Authorization: Bearer <your_token_here>
 }
 ```
 
----
+### Update Transaction
 
-### Fetch Transaction Audit History
+```json
+PATCH /api/transactions/1
+Authorization: Bearer <access_token>
+
+{
+  "amount": 60.00,
+  "category": "Groceries"
+}
+```
+
+### Delete Transaction
 
 ```
-GET /api/audit/transactions/1
-Authorization: Bearer <admin_token>
+DELETE /api/transactions/1
+Authorization: Bearer <access_token>
 ```
 
 ### Fetch All Audit Logs (with filters)
 
 ```
 GET /api/audit?action=CREATE_TRANSACTION&resource=transaction&page=1&limit=20
-Authorization: Bearer <admin_token>
+Authorization: Bearer <access_token>
+```
+
+### Fetch Transaction Audit History
+
+```
+GET /api/audit/transactions/1
+Authorization: Bearer <access_token>
 ```
 
 ---
@@ -206,8 +268,6 @@ test/
 ```
 
 ---
-## Docs
-Visit http://localhost:3000/api-docs after starting the server to explore the full interactive documentation.
 
 ## Assumptions
 
@@ -215,6 +275,7 @@ Visit http://localhost:3000/api-docs after starting the server to explore the fu
 - Only ADMIN can create, update, or delete transactions
 - ANALYST can read transactions and access dashboard analytics
 - VIEWER has read-only access to transactions
+- VIEWER cannot access `GET /api/transactions` — only ADMIN and ANALYST can
 - JWT access token is sent via `Authorization: Bearer` header
 - Refresh token is stored in an HTTP-only cookie
 - CORS is restricted to `ALLOWED_ORIGIN` (default: `http://localhost:3000`)
