@@ -7,6 +7,8 @@ const getDetails = async (userId) => {
 
     let totalIncome = 0
     let totalExpense = 0
+    let maxExpense=0;
+    let topCategory="";
     const categoryMap = {}
 
     transactions.forEach((t) => {
@@ -15,12 +17,24 @@ const getDetails = async (userId) => {
         categoryMap[t.category] = (categoryMap[t.category] || 0) + t.amount
     })
 
+    transactions.forEach((t) => {
+        if(t.amount>maxExpense && t.type==='expense'){
+            maxExpense=t.amount;
+            topCategory=t.category;
+        }
+    })
+
     return {
         totalIncome,
         totalExpense,
         netBalance: totalIncome - totalExpense,
         categoryMap,
         recentTransactions: transactions.slice(0, 5),
+
+        insights:{
+            highestExpense: maxExpense,
+            topExpensedCategory: topCategory
+        }
     }
 }
 
@@ -37,5 +51,6 @@ const trends = async (userId) => {
         { $sort: { '_id.year': 1, '_id.month': 1 } },
     ])
 }
+
 
 module.exports = { getDetails, trends }
