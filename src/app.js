@@ -26,6 +26,21 @@ app.use(express.json())
 app.use(cookieParser())
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
+
+app.get('/', (req, res) => {
+    res.json({
+        name: 'FinCore – Secure Financial Backend System',
+        version: '1.0.0',
+        description: 'A production-ready REST API for managing financial transactions with role-based access control, analytics dashboard, and a full audit trail.',
+        docs: `${req.protocol}://${req.get('host')}/api-docs`,
+        endpoints: {
+            auth: `${req.protocol}://${req.get('host')}/api/auth`,
+            transactions: `${req.protocol}://${req.get('host')}/api/transactions`,
+            dashboard: `${req.protocol}://${req.get('host')}/api/dashboard`,
+            audit: `${req.protocol}://${req.get('host')}/api/audit`,
+        },
+    })
+})
 app.use('/api/auth', authRoutes)
 app.use('/api/transactions', transactionRoutes)
 app.use('/api/audit', auditRoutes)
