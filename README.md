@@ -25,6 +25,7 @@ Inspired by real-world fintech architecture.
 - Auto-incrementing `transactionId` per transaction
 - Advanced Filtering (date, category, type)
 - Dashboard Analytics (income, expense, trends)
+- Audit Logging (every auth, transaction, and dashboard action is recorded with IP, user agent, and full details)
 - Pagination support
 - Rate limiting on auth routes (20 req / 15 min)
 - Centralized error handling middleware
@@ -93,6 +94,15 @@ http://localhost:5000
 
 ---
 
+### 📋 Audit Logs
+
+| Method | Endpoint                        | Description                              | Roles Allowed |
+|--------|---------------------------------|------------------------------------------|---------------|
+| GET    | /api/audit                      | Fetch all audit logs (filterable)        | ADMIN         |
+| GET    | /api/audit/transactions/:id     | Full audit history for a transaction     | ADMIN         |
+
+---
+
 ### 📊 Dashboard & Analytics
 
 | Method | Endpoint                 | Description                            | Roles Allowed     |
@@ -141,6 +151,22 @@ Authorization: Bearer <your_token_here>
 
 ---
 
+### Fetch Transaction Audit History
+
+```
+GET /api/audit/transactions/1
+Authorization: Bearer <admin_token>
+```
+
+### Fetch All Audit Logs (with filters)
+
+```
+GET /api/audit?action=CREATE_TRANSACTION&resource=transaction&page=1&limit=20
+Authorization: Bearer <admin_token>
+```
+
+---
+
 ## Setup Instructions
 
 ```bash
@@ -175,7 +201,8 @@ Tests are located in the `test/` directory and use **Jest** + **Supertest**.
 test/
 ├── auth.test.js
 ├── transaction.test.js
-└── dashboard.test.js
+├── dashboard.test.js
+└── audit.test.js
 ```
 
 ---
@@ -191,3 +218,7 @@ Visit http://localhost:3000/api-docs after starting the server to explore the fu
 - JWT access token is sent via `Authorization: Bearer` header
 - Refresh token is stored in an HTTP-only cookie
 - CORS is restricted to `ALLOWED_ORIGIN` (default: `http://localhost:3000`)
+- All actions (auth, transactions, dashboard) are recorded in the audit log
+- UPDATE audit entries store a `before` and `after` snapshot of the transaction
+- DELETE audit entries store a full `snapshot` of the transaction at time of deletion
+- Only ADMIN can query audit logs
