@@ -5,6 +5,7 @@ const swaggerUi = require('swagger-ui-express')
 const swaggerSpec = require('./config/swagger')
 const authRoutes = require('./routes/authRoutes')
 const transactionRoutes = require('./routes/transactionRoutes')
+const auditRoutes = require('./routes/auditRoutes')
 const errorMiddleware = require('./middlewares/error.middleware')
 
 const app = express()
@@ -21,6 +22,7 @@ app.use(express.json())
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 app.use('/auth', authRoutes)
 app.use('/transactions', transactionRoutes)
+app.use('/audit', auditRoutes)
 
 app.use(errorMiddleware)
 

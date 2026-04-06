@@ -1,5 +1,5 @@
 const router = require('express').Router()
-const { register, login } = require('../controllers/authController')
+const { register, login, logout } = require('../controllers/authController')
 const { registerRules, loginRules } = require('../validators/auth.validator')
 const validate = require('../middlewares/validate.middleware')
 
@@ -80,5 +80,8 @@ router.post('/register', ...registerRules, validate, register)
  *               $ref: '#/components/schemas/Error'
  */
 router.post('/login', ...loginRules, validate, login)
+
+const auth = require('../middlewares/auth.middleware')
+router.post('/logout', auth, logout)
 
 module.exports = router

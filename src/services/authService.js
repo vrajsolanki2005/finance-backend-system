@@ -24,7 +24,7 @@ const loginUser = async (data) => {
 
     await User.findByIdAndUpdate(user._id, { refreshToken })
 
-    return { accessToken, refreshToken }
+    return { accessToken, refreshToken, user: { id: user._id, email: user.email, role: user.role } }
 }
 
 const logoutUser = async (userId) => {
