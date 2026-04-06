@@ -86,38 +86,6 @@ router.post('/', auth, role('ADMIN'), ...createRules, validate, controller.creat
  */
 router.get('/', auth, role('ADMIN', 'ANALYST'), controller.getAll)
 
-/**
- * @swagger
- * /transactions/summary/dashboard:
- *   get:
- *     summary: Get dashboard analytics
- *     tags: [Dashboard]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Dashboard data fetched
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 summary:
- *                   type: object
- *                   properties:
- *                     income: { type: number }
- *                     expense: { type: number }
- *                     net: { type: number }
- *                 categories:
- *                   type: array
- *                 recent:
- *                   type: array
- *                 monthly:
- *                   type: array
- *       403:
- *         description: Access denied (ADMIN, ANALYST only)
- */
-router.get('/summary/dashboard', auth, role('ADMIN', 'ANALYST'), controller.dashboard)
 
 /**
  * @swagger
